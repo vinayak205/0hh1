@@ -21,6 +21,8 @@ function Grid(size, height, id) {
       wreg = new RegExp('[12]{' + width + '}'),
       hreg = new RegExp('[12]{' + height + '}'),
       tripleReg = new RegExp('1{3}|2{3}'),
+      tripleRedReg = new RegExp('1{3}'),
+      tripleBlueReg = new RegExp('2{3}'),
       count0reg = new RegExp('[^0]', 'g'),
       count1reg = new RegExp('[^1]', 'g'),
       count2reg = new RegExp('[^2]', 'g'),
@@ -429,12 +431,17 @@ function Grid(size, height, id) {
     if (!info) {
       var str = gridInfo.cols[i].join('');
       info = gridInfo.colInfo[i] = {
+        col: i,
         str: str,
         nr0s: str.replace(count0reg,'').length, 
         nr1s: str.replace(count1reg,'').length, 
         //nr2s: str.replace(count2reg,'').length, 
         hasTriple: tripleReg.test(str),
         //isFull: !/0/.test(str)
+      }
+      if (info.hasTriple) {
+        info.hasTripleRed = tripleRedReg.test(str),
+        info.hasTripleBlue = tripleBlueReg.test(str)
       }
       info.isFull = info.nr0s == 0;
       info.nr2s = height - info.nr0s - info.nr1s;
@@ -448,12 +455,17 @@ function Grid(size, height, id) {
     if (!info) {
       var str = gridInfo.rows[i].join('');
       info = gridInfo.rowInfo[i] = {
+        row: i,
         str: str,
         nr0s: str.replace(count0reg,'').length, 
         nr1s: str.replace(count1reg,'').length, 
         //nr2s: str.replace(count2reg,'').length, 
         hasTriple: tripleReg.test(str)
         //isFull: !/0/.test(str)
+      }
+      if (info.hasTriple) {
+        info.hasTripleRed = tripleRedReg.test(str),
+        info.hasTripleBlue = tripleBlueReg.test(str)
       }
       info.isFull = info.nr0s == 0;
       info.nr2s = width - info.nr0s - info.nr1s;
@@ -463,7 +475,7 @@ function Grid(size, height, id) {
   }
 
   // not a full isValid check, only checks for balanced spread of 0's and 1's
-  function isValid() {
+  function isValid(ignoreInvalidState) {
     hint.doubleColFound = [];
     hint.doubleRowFound = [];
 
@@ -472,17 +484,20 @@ function Grid(size, height, id) {
     for (var i=0; i<width; i++) {
       var info = getColInfo(i);
       // if too many 1's or 2's found, or three in a row, leave
-      if (info.isInvalid)
+      if (info.isInvalid && !ignoreInvalidState)
         return false;
       // if no empty tiles found, see if it's double
       if (info.isFull) {
         if (cols[info.str]) {
 
           info.unique = false;
+          info.similar = cols[info.str] - 1; // store the identical col
 
           if (hint.active)
             hint.doubleColFound.push(cols[info.str]-1, i);
-          return false;
+          
+          if (!ignoreInvalidState)
+            return false;
         }
         else {
           info.unique = true;
@@ -492,17 +507,20 @@ function Grid(size, height, id) {
 
       var info = getRowInfo(i);
       // if too many 1's or 2's found, or three in a row, leave
-      if (info.isInvalid)
+      if (info.isInvalid && !ignoreInvalidState)
         return false;
       // if no empty tiles found, see if it's double
       if (info.isFull) {
         if (rows[info.str]) {
 
           info.unique = false;
+          info.similar = rows[info.str] - 1; // store the identical row
 
           if (hint.active)
             hint.doubleRowFound.push(rows[info.str]-1, i);
-          return false;
+
+          if (!ignoreInvalidState)
+            return false;
         }
         else {
           info.unique = true;

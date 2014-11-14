@@ -8,7 +8,7 @@
  */
 var BackgroundService = new (function() {
 	var self = this,
-			enabled = (window.Blob && window.Worker)? true : false,
+			enabled = (window.Worker && (window.Blob || window.MSApp))? true : false,
 			worker = null;
 
 	if (Game.debug)
@@ -49,15 +49,25 @@ var BackgroundService = new (function() {
 	}
 
 	function createWorker() {
-		var js = [
-			Utility,State,Grid,Tile,generateGridAndSolution,
-			'\nvar Utils = new Utility();',
-			'\nfunction Hint() { this.active = false; }',
-			'self.onmessage = function(e) {generateGridAndSolution(e.data.size)};'
-		].join('');
+		if (window.MSApp) {
+			worker = new Worker('js/win-webworker.js');
+			if (Game.debug)
+				console.log('Web worker created statically')
+		}
+		// otherwise generate worker on the fly based on existing code
+		else {
+			if (Game.debug)
+				console.log('Web worker created on the fly')
+			var js = [
+				Utility,State,Grid,Tile,generateGridAndSolution,
+				'\nvar Utils = new Utility();',
+				'\nfunction Hint() { this.active = false; }',
+				'self.onmessage = function(e) {generateGridAndSolution(e.data.size)};'
+			].join('');
 
-		var blob = new Blob([js], { type: "text/javascript" });
-		worker = new Worker(window.URL.createObjectURL(blob));
+			var blob = new Blob([js], { type: "text/javascript" });
+			worker = new Worker(window.URL.createObjectURL(blob));
+		}
 		worker.onmessage = function(e) {
 			var puzzle = JSON.parse(e.data);			
 			onPuzzleGenerated(puzzle);

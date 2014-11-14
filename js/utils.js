@@ -195,7 +195,15 @@ function Utility() {
     id = id || 'tempcss';
     $('#' + id).remove();
     var style = '<style id="' + id + '">' + s + '</style>';
-    $('head').first().append($(style));
+    
+    // windows security
+    if (!window.isWebApp && window.MSApp && window.MSApp.execUnsafeLocalFunction) {
+      MSApp.execUnsafeLocalFunction(function() {
+        $('head').first().append($(style));
+      });
+    }
+    else
+      $('head').first().append($(style));
   },
   setColorScheme: function(c1) {
     var c2 = Colors.getComplementary(c1),

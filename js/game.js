@@ -8,8 +8,8 @@
  */
 var Game = new (function() {
   var self = this,
-      debug = Config.debug,
-      tweet = Config.tweet,
+      debug = document.location.hash == '#debug',
+      tweet = window.isWebApp,
       startedTutorial = false,
       grid,
       sizes = [4,6,8,10],
@@ -21,6 +21,7 @@ var Game = new (function() {
       endGameTOH1,
       endGameTOH2,
       endGameTOH3,
+      endSubtleHintTOH,
       onHomeScreen = true,
       undoStack = [],
       undone = false,
@@ -29,6 +30,9 @@ var Game = new (function() {
   function init() {
     $('#scorenr').html(getScore());
     $('#tweeturl').hide();
+
+    if (!window.isWebApp)
+      $('#app').hide();
     
     if (Utils.isTouch())
       $('html').addClass('touch');
@@ -164,6 +168,14 @@ var Game = new (function() {
     resize();
   }
 
+  function showRules() {
+    onHomeScreen = false;
+    $('.screen').hide().removeClass('show');
+    $('#rules').show();
+    setTimeout(function() { $('#rules').addClass('show'); },0);
+    resize();
+  }
+
   function showSizes() {
     onHomeScreen = false;
     showGame();
@@ -224,6 +236,7 @@ var Game = new (function() {
     $('#chooseSize').removeClass('show');
     $('#score').removeClass('show').hide();
     $('#bar [data-action="help"]').removeClass('hidden wiggle');
+    $('#bar [data-action="help"]').removeClass('subtleHint');
     $('#boardsize').html('<span>' + puzzle.size + ' x ' + puzzle.size + '</span>');
     grid = new Grid(puzzle.size, puzzle.size);
     lastSize = puzzle.size;
@@ -307,7 +320,10 @@ var Game = new (function() {
 
   function addEventListeners() {
     document.addEventListener("backbutton", backButtonPressed, false);
-
+	
+	if (window.WinJS)
+      WinJS.Application.onbackclick = backButtonPressed;
+	  
     $(document).on('keydown', function(evt){
       if (evt.keyCode == 27 /* escape */) { backButtonPressed(); return false; }
       if (evt.keyCode == 32 /* space */) { doAction('help'); return false; }
@@ -363,8 +379,8 @@ var Game = new (function() {
       else
         tile.clear();
 
-      if (tile.value > 0)
-        checkTOH = setTimeout(function(){checkForLevelComplete();}, 700);
+      //if (tile.value > 0)
+      checkTOH = setTimeout(function(){checkForLevelComplete();}, 700);
       return false;
     });
   }
@@ -374,7 +390,7 @@ var Game = new (function() {
     var $el = $(evt.target).closest('*[data-action]'),
         action = $(evt.target).closest('*[data-action]').attr('data-action'),
         value = $el.attr('data-value');
-    if (action) {
+    if (action && action != 'tweet') { // hack for allowing a href tapping :P
       doAction(action, value);
       return false;
     }
@@ -443,6 +459,12 @@ var Game = new (function() {
           grid.hint.next();
         }
         break;
+      case 'rules':
+        showRules();
+        break;
+      case 'show-game':
+        showGame();
+        break;
       case 'play':
         showSizes();
         break;
@@ -456,8 +478,14 @@ var Game = new (function() {
   }
 
   function checkForLevelComplete() {
-    if (grid.emptyTileCount > 0)
+    if (grid.emptyTileCount > 0) {
+      if (!grid.isValid())
+        hintAboutError();
+      else {
+        $('#bar [data-action="help"]').removeClass('subtleHint'); 
+      }
       return;
+    } 
 
     if (grid.wrongTiles.length > 0) {
       grid.hint.next();
@@ -465,6 +493,31 @@ var Game = new (function() {
     }
 
     endGame();
+  }
+
+  // subtle wiggle eye icon to indicate something is wrong...
+  function hintAboutError() {
+    $('#bar [data-action="help"]').removeClass('subtleHint');
+    clearTimeout(endSubtleHintTOH);
+    setTimeout(function() {
+      grid.isValid(true);
+      var invalidFullRowOrColumnFound = false;
+      for (var i=0; i<grid.width; i++) {
+        var ci = grid.getColInfo(i),
+            ri = grid.getRowInfo(i);
+        if ((ci.isFull && (ci.isInvalid || !ci.unique)) ||
+            (ri.isFull && (ri.isInvalid || !ri.unique))) {
+          invalidFullRowOrColumnFound = true;
+          break;
+        }
+      }
+      if (invalidFullRowOrColumnFound) {
+        $('#bar [data-action="help"]').addClass('subtleHint');
+        endSubtleHintTOH = setTimeout(function() {
+          $('#bar [data-action="help"]').removeClass('subtleHint');
+        }, 2000);
+      }
+    },0);
   }
 
   function tutorialPlayed() {
@@ -491,10 +544,16 @@ var Game = new (function() {
   }
 
   function backButtonPressed() {
-    if (onHomeScreen)
-      navigator.app.exitApp()
-    else 
+    if (onHomeScreen) {
+      if (window.WinJS)
+        window.close();
+      else
+        navigator.app.exitApp();
+    }
+    else
       doAction('back');
+	  
+	  return true;
   }
 
   function getOjoo() {
@@ -567,10 +626,11 @@ var Game = new (function() {
     clearTimeout(endGameTOH1);
     clearTimeout(endGameTOH2);
     clearTimeout(endGameTOH3);
+    clearTimeout(endSubtleHintTOH);
   }
 
   function updateTweetUrl(size) {
-    var msg = '#0hh1 I just completed a ' + size + ' x ' + size + ' puzzle and my score is ' + getScore() + '.',
+    var msg = '#0hh1 I just completed a ' + size + ' x ' + size + ' puzzle and my score is ' + getScore() + '. http://0hh1.com (or get the App!) ',
         url = 'https://twitter.com/share?text=' + encodeURIComponent(msg);
     $('#tweeturl').attr('href', url);
   }

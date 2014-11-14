@@ -13,9 +13,9 @@ var TutorialMessages = {
   4: { msg: 'Never have three blue tiles together in a row either.', tiles: [ [1,1,1] ] },
   5: { msg: 'Three red or blue tiles below each other is invalid too!', tiles: [ [1,2,2], [2,2,1] ] },
   6: { msg: 'A full row must have as many red tiles as it has blue ones.', tiles: [ [3,1,1] ], rows: [1] },
-  7: { msg: 'Colums have an equal number of each color too.', tiles: [ [1,3,2] ], cols: [1] },
-  8: { msg: 'You should be able to know what colors these are...', tiles: [ [2,3,1], [0,3,1] ] },
-  9: { msg: 'One more thing...<br>No two rows are the same.', tiles: [ [0,2,2],[3,2,1] ], rows:[2,3] },
+  7: { msg: 'Columns have an equal number of each color too.', tiles: [ [1,3,2] ], cols: [1] },
+  8: { msg: 'You should be able to know what color this one is...', tiles: [ [2,3,1] ] },
+  9: { msg: 'No two rows and no two columns are the same.', tiles: [ [0,3,1], [0,2,2],[3,2,1] ], rows:[2,3] },
  10: { msg: 'If you get stuck, tap the eye to peek.', tiles: [ [3,0,2] ], wiggle: true }
 }
 

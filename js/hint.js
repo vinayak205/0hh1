@@ -51,8 +51,6 @@ function Hint(grid) {
 
   function mark(tile, hintType, tile2, doubleRowOrCol) {
     if (active) {
-      //console.log('mark', hintType, doubleRowOrCol)
-      //console.log('tiles', tile, tile2)
       info.tile = tile;
       info.tile2 = tile2 || null;
       info.type = hintType;
@@ -65,6 +63,14 @@ function Hint(grid) {
   function next() {
     var wrongTiles = grid.wrongTiles;
     if (wrongTiles.length) {
+      //if (grid.emptyTileCount == 0) {
+        // if there are errors on a full grid, show a better message than this...
+        var handled = getErrorHintForCompleteGrid();
+        if (handled)
+          return;
+
+      //}
+
       if (wrongTiles.length == 1) {
         wrongTiles[0].mark();
         show(HintType.Error);
@@ -104,6 +110,64 @@ function Hint(grid) {
     }
   }
 
+  function getErrorHintForCompleteGrid() {
+    active = true;
+    var invalidStates = [],
+        notUniqueStates = [];
+    
+    grid.isValid(true);
+    for (var i=0; i<grid.width; i++) {
+      var ci = grid.getColInfo(i),
+          ri = grid.getRowInfo(i);
+      if (ci.isFull && ci.isInvalid) invalidStates.push(ci);
+      if (ri.isFull && ri.isInvalid) invalidStates.push(ri);
+      if (ci.isFull && !ci.unique) notUniqueStates.push(ci);
+      if (ri.isFull && !ri.unique) notUniqueStates.push(ri);
+    }
+    var item = null;
+    if (invalidStates.length)
+      item = Utils.pick(invalidStates);
+    else if (notUniqueStates.length)
+      item = Utils.pick(notUniqueStates);
+
+    if (item) {
+      var index = -1, // col or row to highlight
+          index2 = -1, // col or row to highlight
+          isCol = (item.col === 0 || item.col)? true : false;
+          hintType = null;
+      index = isCol? item.col : item.row;
+      if (item.hasTriple)
+        hintType = item.hasTripleRed? HintType.MaxTwoRed : HintType.MaxTwoBlue;
+      else if (item.nr2s > item.nr1s || item.nr1s > item.nr2s)
+        hintType = isCol? HintType.ColMustBeBalanced : HintType.RowMustBeBalanced;
+      else if (item.nr1s > item.nr2s)
+        hintType = isCol? HintType.ColMustBeBalanced : HintType.RowMustBeBalanced;
+      else if (!item.unique) {
+        hintType = isCol? HintType.ColsMustBeUnique : HintType.RowsMustBeUnique;
+        if (item.similar == 0 || item.similar)
+          index2 = item.similar;
+      }
+
+      if (index == 0 || index) {
+
+        // set the hint
+        if (isCol) {
+          grid.markCol(index);
+          if (index2 == 0 || index2)
+            grid.markCol(index2);
+        }
+        else {
+          grid.markRow(index);
+          if (index2 == 0 || index2)
+            grid.markRow(index2);
+        }
+        show(hintType);
+        return true;
+      }
+    }
+    return false;
+  }
+
   function show(type) {
     var s = type;
     $('#hintMsg').html('<span>' + s + '</span>');
@@ -121,6 +185,7 @@ function Hint(grid) {
   this.next = next;
   this.show = show;
   this.hide = hide;
+  this.getErrorHintForCompleteGrid = getErrorHintForCompleteGrid;
   
   this.info = info;
   this.__defineGetter__('active', function() { return active; })
